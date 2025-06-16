@@ -1,0 +1,15 @@
+# PyInstaller가 만든 폴더들
+/build/
+/dist/
+*.spec
+
+# 실행 파일 및 대용량 파일
+*.exe
+ffmpeg.exe
+
+# 파이썬 캐시 파일
+__pycache__/
+*.pyc
+
+# VS Code 설정 폴더
+.vscode/

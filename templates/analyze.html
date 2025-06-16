@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ stats.title }} - 채널 분석 결과</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto max-w-6xl p-4 md:p-8">
+        <div class="mb-4">
+            <a href="/" class="text-red-600 hover:text-red-800 transition">&larr; 다른 채널 분석하기</a>
+        </div>
+        <header class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div class="flex items-center space-x-6">
+                <img src="{{ stats.profile_image }}" alt="{{ stats.title }} 프로필 이미지" class="w-24 h-24 rounded-full">
+                <div>
+                    <h1 class="text-3xl font-bold">{{ stats.title }}</h1>
+                    <p class="text-gray-600 mt-2 line-clamp-3">{{ stats.description }}</p>
+                </div>
+            </div>
+        </header>
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">채널 요약</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">구독자 수</div><div class="text-2xl font-bold">{{ "{:,}".format(stats.subscribers) }}명</div></div>
+                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">총 조회수</div><div class="text-2xl font-bold">{{ "{:,}".format(stats.total_views) }}회</div></div>
+                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">예상 월수익 (CPM: ${{ CPM_USD }})</div><div class="text-2xl font-bold text-green-600">${{ "{:,.2f}".format(stats.estimated_revenue) }}</div></div>
+                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">채널 개설일</div><div class="text-2xl font-bold">{{ stats.created_date }}</div></div>
+            </div>
+        </section>
+        <section>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold">최신 동영상</h2>
+                <form method="get" action="/analyze">
+                    <input type="hidden" name="url" value="{{ original_url }}">
+                    <select name="sortBy" onchange="this.form.submit()" class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <option value="published" {% if sort_by == 'published' %}selected{% endif %}>최신순</option>
+                        <option value="views" {% if sort_by == 'views' %}selected{% endif %}>조회수순</option>
+                        <option value="likes" {% if sort_by == 'likes' %}selected{% endif %}>좋아요순</option>
+                    </select>
+                </form>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {% for v in videos %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+                    <a href="{{ v.url }}" target="_blank"><img src="{{ v.thumb }}" alt="{{ v.title }}" class="w-full h-40 object-cover"></a>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <h3 class="font-bold text-md mb-2 flex-grow line-clamp-2">{{ v.title }}</h3>
+                        <div class="text-sm text-gray-600 space-y-1 mb-3">
+                            <p>조회수: {{ "{:,}".format(v.views) }}회</p>
+                            <p>좋아요: {{ "{:,}".format(v.likes) }}개</p>
+                            <p>업로드: {{ v.published.date() }}</p>
+                        </div>
+                        <div class="mt-auto pt-2 border-t border-gray-200 text-center text-sm space-x-2">
+                             <a href="/caption/{{ v.id }}" class="text-blue-600 hover:underline">자막</a><span> | </span>
+                             <a href="/caption-ai/{{ v.id }}" class="text-purple-600 hover:underline">AI 자막</a><span> | </span>
+                             <!-- ✨ 영상 다운로드 버튼 추가 ✨ -->
+                             <a href="/download-video/{{ v.id }}" class="text-green-600 hover:underline">영상 다운</a><span> | </span>
+                             <a href="{{ v.url }}" target="_blank" class="text-red-600 hover:underline font-semibold">영상보기</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        <footer class="text-center text-gray-500 mt-12">
+            <p>&copy; 2024 YouTube Analyzer. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
