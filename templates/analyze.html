@@ -5,68 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ stats.title }} - 채널 분석 결과</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .page-link.active {
+            z-index: 10;
+            color: #fff;
+            background-color: #ef4444; /* red-500 */
+            border-color: #ef4444;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <div class="container mx-auto max-w-6xl p-4 md:p-8">
-        <div class="mb-4">
-            <a href="/" class="text-red-600 hover:text-red-800 transition">&larr; 다른 채널 분석하기</a>
-        </div>
-        <header class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <div class="flex items-center space-x-6">
-                <img src="{{ stats.profile_image }}" alt="{{ stats.title }} 프로필 이미지" class="w-24 h-24 rounded-full">
-                <div>
-                    <h1 class="text-3xl font-bold">{{ stats.title }}</h1>
-                    <p class="text-gray-600 mt-2 line-clamp-3">{{ stats.description }}</p>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    <!-- ✨ 전체 레이아웃을 광고 배너 포함 형태로 변경 ✨ -->
+    <div class="relative flex justify-center min-h-screen">
+        <!-- 왼쪽 광고 배너 (큰 화면에서만 보임) -->
+        <aside class="hidden xl:block w-48 flex-shrink-0 p-4">
+            <div class="sticky top-8 bg-white h-96 rounded-lg shadow-md flex items-center justify-center text-gray-400 border">
+                <span>여기에 광고</span>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="w-full max-w-7xl p-4 md:p-8">
+            <div class="mb-6">
+                <a href="/" class="text-red-600 hover:text-red-800 transition-colors">&larr; 다른 채널 분석하기</a>
+            </div>
+            
+            <!-- 채널 기본 정보 -->
+            <header class="bg-white p-6 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
+                <img src="{{ stats.profile_image }}" alt="{{ stats.title }} 프로필" class="w-32 h-32 rounded-full border-4 border-red-200">
+                <div class="flex-1 text-center md:text-left">
+                    <h1 class="text-4xl font-bold text-gray-800">{{ stats.title }}</h1>
+                    <p class="text-gray-500 mt-2 max-w-2xl line-clamp-3">{{ stats.description }}</p>
                 </div>
-            </div>
-        </header>
-        <section class="mb-8">
-            <h2 class="text-2xl font-semibold mb-4">채널 요약</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">구독자 수</div><div class="text-2xl font-bold">{{ "{:,}".format(stats.subscribers) }}명</div></div>
-                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">총 조회수</div><div class="text-2xl font-bold">{{ "{:,}".format(stats.total_views) }}회</div></div>
-                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">예상 월수익 (CPM: ${{ CPM_USD }})</div><div class="text-2xl font-bold text-green-600">${{ "{:,.2f}".format(stats.estimated_revenue) }}</div></div>
-                <div class="bg-white p-4 rounded-lg shadow"><div class="text-sm text-gray-500">채널 개설일</div><div class="text-2xl font-bold">{{ stats.created_date }}</div></div>
-            </div>
-        </section>
-        <section>
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold">최신 동영상</h2>
-                <form method="get" action="/analyze">
-                    <input type="hidden" name="url" value="{{ original_url }}">
-                    <select name="sortBy" onchange="this.form.submit()" class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500">
-                        <option value="published" {% if sort_by == 'published' %}selected{% endif %}>최신순</option>
-                        <option value="views" {% if sort_by == 'views' %}selected{% endif %}>조회수순</option>
-                        <option value="likes" {% if sort_by == 'likes' %}selected{% endif %}>좋아요순</option>
-                    </select>
-                </form>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {% for v in videos %}
-                <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
-                    <a href="{{ v.url }}" target="_blank"><img src="{{ v.thumb }}" alt="{{ v.title }}" class="w-full h-40 object-cover"></a>
-                    <div class="p-4 flex flex-col flex-grow">
-                        <h3 class="font-bold text-md mb-2 flex-grow line-clamp-2">{{ v.title }}</h3>
-                        <div class="text-sm text-gray-600 space-y-1 mb-3">
-                            <p>조회수: {{ "{:,}".format(v.views) }}회</p>
-                            <p>좋아요: {{ "{:,}".format(v.likes) }}개</p>
-                            <p>업로드: {{ v.published.date() }}</p>
-                        </div>
-                        <div class="mt-auto pt-2 border-t border-gray-200 text-center text-sm space-x-2">
-                             <a href="/caption/{{ v.id }}" class="text-blue-600 hover:underline">자막</a><span> | </span>
-                             <a href="/caption-ai/{{ v.id }}" class="text-purple-600 hover:underline">AI 자막</a><span> | </span>
-                             <!-- ✨ 영상 다운로드 버튼 추가 ✨ -->
-                             <a href="/download-video/{{ v.id }}" class="text-green-600 hover:underline">영상 다운</a><span> | </span>
-                             <a href="{{ v.url }}" target="_blank" class="text-red-600 hover:underline font-semibold">영상보기</a>
+            </header>
+            
+            <!-- 채널 요약 통계 -->
+            <section class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 text-center">
+                <div class="bg-white p-5 rounded-lg shadow-lg"><div class="text-sm text-gray-500">구독자 수</div><div class="text-3xl font-bold text-red-600 mt-1">{{ "{:,}".format(stats.subscribers) }}명</div></div>
+                <div class="bg-white p-5 rounded-lg shadow-lg"><div class="text-sm text-gray-500">총 조회수</div><div class="text-3xl font-bold text-red-600 mt-1">{{ "{:,}".format(stats.total_views) }}회</div></div>
+                <div class="bg-white p-5 rounded-lg shadow-lg"><div class="text-sm text-gray-500">총 영상 수</div><div class="text-3xl font-bold text-red-600 mt-1">{{ "{:,}".format(stats.video_count) }}개</div></div>
+                <div class="bg-white p-5 rounded-lg shadow-lg"><div class="text-sm text-gray-500">채널 개설일</div><div class="text-3xl font-bold text-red-600 mt-1">{{ stats.created_date }}</div></div>
+            </section>
+
+            <!-- 채널 심층 분석 -->
+            <section class="mb-12">
+                <h2 class="text-3xl font-bold mb-6 text-gray-700 border-l-4 border-red-500 pl-4">채널 심층 분석 (최근 200개 영상 기준)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="font-bold text-lg mb-3 text-gray-600">콘텐츠 꾸준함</h3>
+                        <div class="space-y-2">
+                            <p><strong>주간 평균 업로드:</strong> <span class="font-semibold text-xl text-blue-600">{{ analysis.uploads_per_week }}개</span></p>
+                            <p><strong>평균 영상 길이:</strong> <span class="font-semibold text-xl text-blue-600">{{ analysis.avg_duration }}</span></p>
                         </div>
                     </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="font-bold text-lg mb-3 text-gray-600">시청자 참여도</h3>
+                        <div class="space-y-2">
+                            <p><strong>1천뷰 당 좋아요:</strong> <span class="font-semibold text-xl text-green-600">{{ analysis.likes_per_1000_views }}개</span></p>
+                            <p><strong>1천뷰 당 댓글:</strong> <span class="font-semibold text-xl text-green-600">{{ analysis.comments_per_1000_views }}개</span></p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg md:col-span-2">
+                        <h3 class="font-bold text-lg mb-3 text-gray-600">최근 인기 TOP 5</h3>
+                        <ul class="space-y-2">
+                            {% for video in analysis.top_5_videos %}
+                            <li class="truncate"><a href="{{ video.url }}" target="_blank" class="hover:text-red-500 transition-colors">🏆 {{ video.title }} ({{ "{:,}".format(video.views) }}회)</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
-                {% endfor %}
+            </section>
+
+            <!-- 동영상 목록 -->
+            <section>
+                <h2 class="text-3xl font-bold mb-6 text-gray-700 border-l-4 border-red-500 pl-4">동영상 목록</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {% for v in videos %}
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col group transform hover:-translate-y-1 transition-transform duration-300">
+                        <a href="{{ v.url }}" target="_blank" class="block overflow-hidden"><img src="{{ v.thumb }}" alt="{{ v.title }}" class="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300"></a>
+                        <div class="p-4 flex flex-col flex-grow">
+                            <h3 class="font-bold text-md mb-2 flex-grow h-12 line-clamp-2">{{ v.title }}</h3>
+                            <div class="text-sm text-gray-600 space-y-1 mb-3">
+                                <p>조회수: <span class="font-medium">{{ "{:,}".format(v.views) }}회</span></p>
+                                <p>좋아요: <span class="font-medium">{{ "{:,}".format(v.likes) }}개</span></p>
+                                <p>업로드: <span class="font-medium">{{ v.published.date() }}</span></p>
+                            </div>
+                            <div class="mt-auto pt-3 border-t border-gray-200 text-center text-xs space-x-2 font-semibold">
+                                 <a href="/caption/{{ v.id }}" class="text-blue-600 hover:underline">자막</a><span>|</span>
+                                 <a href="/caption-ai/{{ v.id }}" class="text-purple-600 hover:underline">AI자막</a><span>|</span>
+                                 <a href="/download-video/{{ v.id }}" class="text-green-600 hover:underline">다운</a><span>|</span>
+                                 <a href="{{ v.url }}" target="_blank" class="text-red-600 hover:underline">보기</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- 페이지네이션 버튼 -->
+            <nav class="mt-10 flex justify-center">
+                <ul class="inline-flex items-center -space-x-px">
+                    {% set start_page = [1, current_page - 4] | max %}
+                    {% set end_page = [total_pages, current_page + 4] | min %}
+
+                    {% if current_page > 1 %}
+                    <li><a href="/analyze?url={{ original_url }}&page={{ current_page - 1 }}" class="py-2 px-3 ml-0 leading-tight text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700">이전</a></li>
+                    {% endif %}
+                    
+                    {% for p in range(start_page, end_page + 1) %}
+                    <li><a href="/analyze?url={{ original_url }}&page={{ p }}" class="page-link py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 {% if p == current_page %}active{% endif %}">{{ p }}</a></li>
+                    {% endfor %}
+
+                    {% if current_page < total_pages %}
+                    <li><a href="/analyze?url={{ original_url }}&page={{ current_page + 1 }}" class="py-2 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700">다음</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </main>
+
+        <!-- 오른쪽 광고 배너 (큰 화면에서만 보임) -->
+        <aside class="hidden xl:block w-48 flex-shrink-0 p-4">
+            <div class="sticky top-8 bg-white h-96 rounded-lg shadow-md flex items-center justify-center text-gray-400 border">
+                <span>여기에 광고</span>
             </div>
-        </section>
-        <footer class="text-center text-gray-500 mt-12">
-            <p>&copy; 2024 YouTube Analyzer. All rights reserved.</p>
-        </footer>
+        </aside>
     </div>
 </body>
 </html>
