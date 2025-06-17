@@ -1,23 +1,21 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>자막 보기: {{ title }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-4">
-  <div class="max-w-3xl mx-auto">
+  <div class="max-w-2xl mx-auto bg-white p-4 rounded shadow">
     <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold truncate">{{ title }}</h1>
-      <button onclick="window.close()" class="bg-red-500 text-white px-3 py-1 rounded">닫기</button>
+      <h1 class="font-bold text-lg truncate">{{ title }}</h1>
+      <button onclick="window.close()" class="text-red-600">닫기</button>
     </div>
     {% if error %}
-    <div class="bg-red-100 text-red-600 p-4 rounded">{{ error }}</div>
+      <p class="text-red-500">{{ error }}</p>
     {% else %}
-    <div class="bg-white p-4 rounded shadow max-h-[70vh] overflow-y-auto">
-      <pre class="font-mono whitespace-pre-wrap break-words">{{ srt_content }}</pre>
-    </div>
+      <pre class="whitespace-pre-wrap font-mono text-sm">{{ srt_content }}</pre>
     {% endif %}
   </div>
 </body>
