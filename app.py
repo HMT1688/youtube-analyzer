@@ -1,17 +1,16 @@
 import os
 import io
 import tempfile
-import traceback
+import time
 import re
 import math
-import time
 from datetime import datetime, timezone
 from functools import lru_cache
 from urllib.error import HTTPError
 
 from flask import (
     Flask, request, send_file, render_template,
-    abort, jsonify, redirect
+    jsonify, redirect
 )
 from flask.logging import create_logger
 from googleapiclient.discovery import build
@@ -26,22 +25,24 @@ logger = create_logger(app)
 # --- 환경 변수 및 설정 ---
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 if not API_KEY:
-    raise RuntimeError("YOUTUBE_API_KEY 필요")
+    raise RuntimeError("YOUTUBE_API_KEY 환경 변수 필요")
 
 CPM_USD = float(os.getenv("CPM_USD", 1.5))
 DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
-# --- Whisper 모델 lazy-load ---
+# --- Whisper 모델 Lazy-Load 지원 ---
 WHISPER_MODEL = None
 
-@app.before_first_request
-def load_whisper_model():
+def get_whisper_model():
     global WHISPER_MODEL
-    try:
-        WHISPER_MODEL = WhisperModel('base', device='cpu', compute_type="int8")
-        logger.info("Whisper 모델 로드 완료.")
-    except Exception as e:
-        logger.error(f"Whisper 모델 로드 실패: {e}")
+    if WHISPER_MODEL is None:
+        try:
+            WHISPER_MODEL = WhisperModel('base', device='cpu', compute_type="int8")
+            logger.info("Whisper 모델 로드 완료.")
+        except Exception as e:
+            logger.error(f"Whisper 모델 로드 실패: {e}")
+            WHISPER_MODEL = False
+    return WHISPER_MODEL
 
 # --- 유틸 함수들 ---
 def parse_iso_date(iso_str):
@@ -80,40 +81,42 @@ def extract_channel_id(url):
             user = url.split("user/")[1].split("/")[0]
             return yt.channels().list(part="id", forUsername=user).execute()["items"][0]["id"]
         if "/@" in url:
-            h = url.split("/@")[1].split("/")[0]
-            return yt.channels().list(part="id", forHandle=h).execute()["items"][0]["id"]
+            handle = url.split("/@")[1].split("/")[0]
+            return yt.channels().list(part="id", forHandle=handle).execute()["items"][0]["id"]
     except Exception:
         logger.exception(f"채널 ID 추출 실패: {url}")
     return None
 
-def fetch_videos(cid, max_v=200):
+def fetch_videos(channel_id, max_v=200):
     yt = get_youtube_client()
     try:
-        pl = yt.channels().list(part="contentDetails", id=cid).execute()
-        uploads = pl["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
-        vids, token = [], None
-        while len(vids) < max_v:
-            r = yt.playlistItems().list(
-                part="snippet", playlistId=uploads, maxResults=50, pageToken=token
+        ch = yt.channels().list(part="contentDetails", id=channel_id).execute()
+        uploads = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        ids, token = [], None
+        while len(ids) < max_v:
+            pl = yt.playlistItems().list(
+                part="snippet", playlistId=uploads,
+                maxResults=50, pageToken=token
             ).execute()
-            vids += [i["snippet"]["resourceId"]["videoId"] for i in r["items"]]
-            token = r.get("nextPageToken")
+            ids += [i["snippet"]["resourceId"]["videoId"] for i in pl["items"]]
+            token = pl.get("nextPageToken")
             if not token:
                 break
 
-        out = []
-        for i in range(0, len(vids), 50):
-            batch = vids[i : i+50]
-            r2 = yt.videos().list(
+        vids = []
+        for i in range(0, len(ids), 50):
+            batch = ids[i:i+50]
+            resp = yt.videos().list(
                 part="snippet,statistics,contentDetails",
                 id=",".join(batch)
             ).execute()
-            for v in r2["items"]:
+            for v in resp["items"]:
                 sn, st, cd = v["snippet"], v["statistics"], v.get("contentDetails", {})
-                out.append({
+                vids.append({
                     "id": v["id"],
                     "title": sn.get("title", ""),
-                    "thumb": sn.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                    "thumb": sn.get("thumbnails", {})\
+                                .get("medium", {}).get("url", ""),
                     "url": f"https://youtu.be/{v['id']}",
                     "published": parse_iso_date(sn.get("publishedAt", "")),
                     "views": int(st.get("viewCount", 0)),
@@ -121,9 +124,9 @@ def fetch_videos(cid, max_v=200):
                     "comments": int(st.get("commentCount", 0)),
                     "duration_sec": parse_duration(cd.get("duration", ""))
                 })
-        return out
+        return vids
     except Exception:
-        logger.exception("동영상 가져오기 중 오류")
+        logger.exception("동영상 목록 로딩 중 오류")
         return []
 
 # --- 라우트 정의 ---
@@ -139,6 +142,7 @@ def analyze():
     cid = extract_channel_id(url)
     if not cid:
         return render_template('index.html', error="유효하지 않은 채널 URL입니다.")
+
     try:
         info = get_youtube_client()\
             .channels()\
@@ -178,16 +182,17 @@ def analyze():
         tv = sum(v["views"] for v in videos)
         tl = sum(v["likes"] for v in videos)
         tc = sum(v["comments"] for v in videos)
-        weeks = max((videos[0]["published"] - videos[-1]["published"]).days / 7, 1)
+        weeks = max((videos[0]["published"]-videos[-1]["published"]).days/7, 1)
         analysis = {
-            "uploads_per_week": round(len(videos) / weeks, 1),
-            "avg_duration": format_seconds(td / len(videos)),
-            "likes_per_1000_views": round(tl / tv * 1000, 1) if tv else 0,
-            "comments_per_1000_views": round(tc / tv * 1000, 1) if tv else 0,
+            "uploads_per_week": round(len(videos)/weeks,1),
+            "avg_duration": format_seconds(td/len(videos)),
+            "likes_per_1000_views": round(tl/tv*1000,1) if tv else 0,
+            "comments_per_1000_views": round(tc/tv*1000,1) if tv else 0,
             "top_5_videos": sorted(videos, key=lambda x: x["views"], reverse=True)[:5]
         }
 
-    return render_template('analyze.html',
+    return render_template(
+        'analyze.html',
         stats=stats,
         videos=page_videos,
         analysis=analysis,
@@ -222,21 +227,18 @@ def get_caption(video_id):
 
 @app.route('/get-caption-ai/<video_id>')
 def get_caption_ai(video_id):
-    if not WHISPER_MODEL:
-        return jsonify({'title':'','srt_content':''})
+    model = get_whisper_model()
+    if model is False:
+        return jsonify({'error':'AI 자막 비활성화'}), 503
     for _ in range(2):
         try:
             yt = YouTube(f"https://youtu.be/{video_id}", use_po_token=True)
-            stream = yt.streams.filter(
-                only_audio=True, file_extension="mp4"
-            ).first()
+            stream = yt.streams.filter(only_audio=True, file_extension="mp4").first()
             if not stream:
                 break
             with tempfile.TemporaryDirectory() as td:
                 path = stream.download(output_path=td)
-                segments, _ = WHISPER_MODEL.transcribe(
-                    path, beam_size=5, language="ko"
-                )
+                segments, _ = model.transcribe(path, beam_size=5, language="ko")
                 lines = []
                 for i, s in enumerate(segments):
                     st = f"{int(s.start//3600):02}:{int(s.start%3600//60):02}:{int(s.start%60):02},{int(s.start*1000%1000):03}"
@@ -259,7 +261,6 @@ def download_video(video_id):
     try:
         yt = YouTube(f"https://youtu.be/{video_id}", use_po_token=True)
         buf = io.BytesIO()
-        # 429 대응 재시도
         for _ in range(3):
             try:
                 yt.streams.get_highest_resolution().stream_to_buffer(buf)
@@ -273,13 +274,12 @@ def download_video(video_id):
         buf.seek(0)
         safe_name = ''.join(c for c in yt.title if c.isalnum() or c in (' ', '-')).strip()
         return send_file(
-            buf,
-            as_attachment=True,
+            buf, as_attachment=True,
             download_name=f"{safe_name}.mp4",
             mimetype="video/mp4"
         )
     except Exception:
-        logger.exception(f"비디오 다운로드 오류({video_id})")
+        logger.exception(f"다운로드 오류({video_id})")
         return redirect(f"https://youtu.be/{video_id}")
 
 if __name__ == "__main__":
