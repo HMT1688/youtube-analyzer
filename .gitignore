@@ -13,3 +13,4 @@ __pycache__/
 
 # VS Code 설정 폴더
 .vscode/
+.env
