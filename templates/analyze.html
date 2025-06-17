@@ -1,205 +1,154 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ stats.title }} - 분석 결과</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .page-link.active { z-index: 10; color: #fff; background-color: #ef4444; border-color: #ef4444; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #ef4444; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #srt-text::-webkit-scrollbar { width: 8px; }
-        #srt-text::-webkit-scrollbar-track { background: #f1f1f1; }
-        #srt-text::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-        #srt-text::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-    </style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ stats.title }} - 분석 결과</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .page-link.active {
+      z-index:10;
+      color:#fff;
+      background-color:#ef4444;
+      border-color:#ef4444;
+    }
+    .loader {
+      border:4px solid #f3f3f3;
+      border-top:4px solid #ef4444;
+      border-radius:50%;
+      width:40px; height:40px;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
+  </style>
 </head>
-<body class="bg-gray-100 p-4 sm:p-8 font-sans">
-    <div class="relative flex justify-center min-h-screen">
-        <!-- 왼쪽 광고 배너 -->
-        <aside class="hidden xl:block w-48 flex-shrink-0 p-4">
-            <div class="sticky top-8 bg-white h-96 rounded-lg shadow-md flex items-center justify-center text-gray-400 border"><span>여기에 광고</span></div>
-        </aside>
+<body class="bg-gray-100 text-gray-800 p-4 sm:p-8 font-sans">
+  <div class="max-w-7xl mx-auto space-y-8">
+    <!-- 헤더 -->
+    <header class="bg-white p-6 rounded-lg shadow flex flex-col md:flex-row items-center space-y-4 md:space-x-6">
+      <img src="{{ stats.profile_image }}" alt="" class="w-24 h-24 rounded-full border-2"/>
+      <div class="flex-1 text-center md:text-left">
+        <h1 class="text-2xl font-bold">{{ stats.title }}</h1>
+        <p class="text-gray-500 mt-1">
+          구독자 {{ "{:,}".format(stats.subscribers) }}명 • 영상 {{ "{:,}".format(stats.video_count) }}개
+        </p>
+      </div>
+      <a href="/" class="text-blue-600 hover:underline">← 다른 채널 분석</a>
+    </header>
 
-        <!-- 메인 콘텐츠 영역 -->
-        <main class="w-full max-w-7xl">
-            <!-- 채널 헤더 -->
-            <header class="bg-white p-6 rounded-lg shadow-md flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-                <img src="{{ stats.profile_image }}" alt="프로필" class="w-24 h-24 rounded-full border-2 border-gray-200">
-                <div class="flex-grow text-center md:text-left">
-                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">{{ stats.title }}</h1>
-                    <p class="text-gray-500 mt-1">구독자 {{ "{:,}".format(stats.subscribers) }}명 • 영상 {{ "{:,}".format(stats.video_count) }}개</p>
-                </div>
-                <a href="/" class="text-sm text-blue-600 hover:underline mt-2 md:mt-0">&larr; 다른 채널 분석</a>
-            </header>
+    <!-- 통계 카드 -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded shadow text-center">
+        <h3 class="font-semibold text-gray-600">주간 평균 업로드</h3>
+        <p class="text-blue-600 text-xl">{{ analysis.uploads_per_week }}개</p>
+      </div>
+      <div class="bg-white p-4 rounded shadow text-center">
+        <h3 class="font-semibold text-gray-600">평균 영상 길이</h3>
+        <p class="text-blue-600 text-xl">{{ analysis.avg_duration }}</p>
+      </div>
+      <div class="bg-white p-4 rounded shadow text-center">
+        <h3 class="font-semibold text-gray-600">1천뷰 당 좋아요</h3>
+        <p class="text-green-600 text-xl">{{ analysis.likes_per_1000_views }}개</p>
+      </div>
+      <div class="bg-white p-4 rounded shadow text-center">
+        <h3 class="font-semibold text-gray-600">1천뷰 당 댓글</h3>
+        <p class="text-green-600 text-xl">{{ analysis.comments_per_1000_views }}개</p>
+      </div>
+    </section>
 
-            <!-- 심층 분석 -->
-            <section class="mt-8">
-                <h2 class="text-2xl font-bold text-gray-700 mb-4">채널 심층 분석</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
-                    <div class="bg-white p-4 rounded-lg shadow-md">
-                        <h3 class="font-semibold text-gray-600 mb-2">콘텐츠 분석</h3>
-                        <div class="text-sm space-y-2">
-                            <p><strong>주간 평균 업로드:</strong> <span class="font-semibold text-blue-600">{{ analysis.uploads_per_week }} 개</span></p>
-                            <p><strong>평균 영상 길이:</strong> <span class="font-semibold text-blue-600">{{ analysis.avg_duration }}</span></p>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow-md">
-                        <h3 class="font-semibold text-gray-600 mb-2">시청자 참여도</h3>
-                        <div class="text-sm space-y-2">
-                            <p><strong>1천뷰 당 좋아요:</strong> <span class="font-semibold text-green-600">{{ analysis.likes_per_1000_views }} 개</span></p>
-                            <p><strong>1천뷰 당 댓글:</strong> <span class="font-semibold text-green-600">{{ analysis.comments_per_1000_views }} 개</span></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow-md mt-4">
-                     <h3 class="font-semibold text-gray-600 mb-2">최근 인기 TOP 5</h3>
-                     <ul class="text-sm space-y-1">
-                        {% for video in analysis.top_5_videos %}
-                        <li class="truncate"><a href="{{ video.url }}" target="_blank" class="hover:text-red-500 transition-colors">🏆 {{ video.title }} ({{ "{:,}".format(video.views) }}회)</a></li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </section>
-            
-            <!-- 동영상 목록 -->
-            <section class="mt-8">
-                <div class="flex justify-between items-center mb-4">
-                     <h2 class="text-2xl font-bold text-gray-700">동영상 목록</h2>
-                     <form id="sort-form" method="get" action="/analyze">
-                        <input type="hidden" name="url" value="{{ original_url }}">
-                        <select name="sortBy" onchange="document.getElementById('sort-form').submit()" class="text-sm border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-500">
-                            <option value="published" {% if sort_by == 'published' %}selected{% endif %}>최신순</option>
-                            <option value="views" {% if sort_by == 'views' %}selected{% endif %}>조회수순</option>
-                            <option value="likes" {% if sort_by == 'likes' %}selected{% endif %}>좋아요순</option>
-                            <option value="comments" {% if sort_by == 'comments' %}selected{% endif %}>댓글순</option>
-                        </select>
-                    </form>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {% for v in videos %}
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
-                        <a href="{{ v.url }}" target="_blank"><img src="{{ v.thumb }}" alt="{{ v.title }}" class="w-full h-40 object-cover"></a>
-                        <div class="p-4 flex flex-col flex-grow">
-                            <h3 class="font-bold text-sm mb-2 flex-grow h-10 line-clamp-2">{{ v.title }}</h3>
-                            <div class="text-xs text-gray-500 space-y-1 mb-3">
-                                <p>조회수: <span class="font-medium">{{ "{:,}".format(v.views) }}</span></p>
-                                <p>업로드: <span class="font-medium">{{ v.published.date() }}</span></p>
-                            </div>
-                            <div class="mt-auto pt-2 border-t border-gray-200 text-center text-xs space-x-2 font-semibold">
-                                 <button onclick="showCaption('{{ v.id }}', false)" class="text-blue-600 hover:underline">자막</button>
-                                 <span>|</span>
-                                 <button onclick="showCaption('{{ v.id }}', true)" class="text-purple-600 hover:underline">AI자막</button>
-                                 <span>|</span>
-                                 <a href="/download-video/{{ v.id }}" class="text-green-600 hover:underline">다운</a>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-
-            <!-- 페이지네이션 버튼 -->
-            <nav class="mt-8 flex justify-center">
-                <ul class="inline-flex items-center -space-x-px">
-                     {% if current_page > 1 %}
-                    <li><a href="/analyze?url={{ original_url }}&sortBy={{ sort_by }}&page={{ current_page - 1 }}" class="py-2 px-3 ml-0 leading-tight text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100">이전</a></li>
-                    {% endif %}
-                    {% set page_range = 5 %}
-                    {% set start_page = [1, current_page - page_range // 2] | max %}
-                    {% set end_page = [total_pages, start_page + page_range - 1] | min %}
-                    {% if end_page - start_page + 1 < page_range %}
-                        {% set start_page = [1, end_page - page_range + 1] | max %}
-                    {% endif %}
-                    
-                    {% for p in range(start_page, end_page + 1) %}
-                    <li><a href="/analyze?url={{ original_url }}&sortBy={{ sort_by }}&page={{ p }}" class="page-link py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 {% if p == current_page %}active{% endif %}">{{ p }}</a></li>
-                    {% endfor %}
-
-                    {% if current_page < total_pages %}
-                    <li><a href="/analyze?url={{ original_url }}&sortBy={{ sort_by }}&page={{ current_page + 1 }}" class="py-2 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100">다음</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </main>
-
-         <!-- 오른쪽 광고 배너 -->
-        <aside class="hidden xl:block w-48 flex-shrink-0 p-4">
-            <div class="sticky top-8 bg-white h-96 rounded-lg shadow-md flex items-center justify-center text-gray-400 border"><span>여기에 광고</span></div>
-        </aside>
-    </div>
-
-    <!-- ✨ 자막 팝업(모달) ✨ -->
-    <div id="caption-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h2 id="caption-title" class="text-lg font-bold text-gray-800 truncate">자막 내용</h2>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+    <!-- 동영상 목록 -->
+    <section>
+      <h2 class="text-2xl font-bold mb-4">동영상 목록</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for v in videos %}
+        <div class="bg-white rounded shadow overflow-hidden flex flex-col">
+          <img src="{{ v.thumb }}" alt="" class="w-full h-40 object-cover"/>
+          <div class="p-4 flex flex-col flex-grow">
+            <h3 class="font-semibold truncate mb-2">{{ v.title }}</h3>
+            <p class="text-sm text-gray-500">조회 {{ "{:,}".format(v.views) }}회</p>
+            <p class="text-sm text-gray-500">업로드 {{ v.published.date() }}</p>
+            <div class="mt-auto pt-2 border-t flex justify-center space-x-2 text-xs font-semibold">
+              <button onclick="showCaption('{{ v.id }}',false)" class="text-blue-600 hover:underline">자막</button>
+              <button onclick="showCaption('{{ v.id }}',true)" class="text-purple-600 hover:underline">AI자막</button>
+              <a href="/download-video/{{ v.id }}" class="text-green-600 hover:underline">다운</a>
             </div>
-            <div id="caption-content" class="p-4 sm:p-6 overflow-y-auto">
-                <div id="loader" class="flex justify-center items-center h-48"><div class="loader"></div></div>
-                <pre id="srt-text" class="font-mono text-sm whitespace-pre-wrap break-words hidden"></pre>
-            </div>
-             <div class="p-3 border-t text-right bg-gray-50 rounded-b-lg">
-                <button id="copy-button" onclick="copyCaption()" class="bg-gray-200 text-gray-700 text-xs font-bold py-1 px-3 rounded hover:bg-gray-300 transition">본문 복사</button>
-            </div>
+          </div>
         </div>
+        {% endfor %}
+      </div>
+      <!-- 페이지네이션 -->
+      <nav class="mt-8 flex justify-center">
+        <ul class="inline-flex -space-x-px">
+          {% if current_page>1 %}
+          <li><a href="/analyze?url={{ original_url }}&page={{ current_page-1 }}" class="px-3 py-1 border bg-white">이전</a></li>
+          {% endif %}
+          {% for p in range(1, total_pages+1) %}
+          <li><a href="/analyze?url={{ original_url }}&page={{ p }}"
+                class="px-3 py-1 border {% if p==current_page %}bg-red-500 text-white{% else %}bg-white{% endif %}">{{ p }}</a></li>
+          {% endfor %}
+          {% if current_page<total_pages %}
+          <li><a href="/analyze?url={{ original_url }}&page={{ current_page+1 }}" class="px-3 py-1 border bg-white">다음</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </section>
+  </div>
+
+  <!-- 자막 모달 -->
+  <div id="caption-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 id="caption-title" class="font-bold">자막 로딩 중...</h2>
+        <button onclick="closeModal()" class="text-2xl">&times;</button>
+      </div>
+      <div id="caption-body" class="p-4 overflow-y-auto flex-1">
+        <div id="loader" class="loader mx-auto my-20"></div>
+        <pre id="srt-text" class="hidden font-mono whitespace-pre-wrap break-words"></pre>
+      </div>
+      <div class="p-3 border-t text-right bg-gray-50">
+        <button id="copy-btn" onclick="copyCaption()" class="bg-gray-200 px-3 py-1 rounded">복사</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-        const modal = document.getElementById('caption-modal');
-        const captionTitle = document.getElementById('caption-title');
-        const srtText = document.getElementById('srt-text');
-        const loader = document.getElementById('loader');
-        const copyButton = document.getElementById('copy-button');
+  <script>
+    const modal = document.getElementById('caption-modal');
+    const loader = document.getElementById('loader');
+    const srtText = document.getElementById('srt-text');
+    const titleEl = document.getElementById('caption-title');
+    const copyBtn = document.getElementById('copy-btn');
 
-        async function showCaption(videoId, isAi) {
-            modal.classList.remove('hidden');
-            loader.style.display = 'flex';
-            srtText.classList.add('hidden');
-            srtText.textContent = '';
-            captionTitle.textContent = '자막을 불러오는 중...';
-            copyButton.textContent = '본문 복사';
-            const url = isAi ? `/get-caption-ai/${videoId}` : `/get-caption/${videoId}`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                loader.style.display = 'none';
-                if (data.error) { srtText.textContent = `오류: ${data.error}`; } 
-                else {
-                    captionTitle.textContent = data.title;
-                    srtText.textContent = data.srt_content;
-                }
-                srtText.classList.remove('hidden');
-            } catch (error) {
-                loader.style.display = 'none';
-                srtText.textContent = '자막을 가져오는데 실패했습니다. 네트워크 연결을 확인해주세요.';
-                srtText.classList.remove('hidden');
-            }
+    async function showCaption(id, ai) {
+      modal.classList.remove('hidden');
+      loader.style.display = 'block';
+      srtText.classList.add('hidden');
+      titleEl.textContent = '자막 로딩 중...';
+
+      try {
+        const res = await fetch(ai?`/get-caption-ai/${id}`:`/get-caption/${id}`);
+        const data = await res.json();
+        loader.style.display = 'none';
+        if (data.error) {
+          srtText.textContent = `오류: ${data.error}`;
+        } else {
+          titleEl.textContent = data.title;
+          srtText.textContent = data.srt_content;
         }
-        function closeModal() { modal.classList.add('hidden'); }
-        function copyCaption() {
-            if (navigator.clipboard) {
-                 navigator.clipboard.writeText(srtText.textContent).then(() => {
-                    copyButton.textContent = '복사 완료!';
-                    setTimeout(() => { copyButton.textContent = '본문 복사'; }, 2000);
-                }).catch(err => { alert('자막 복사에 실패했습니다.'); });
-            } else {
-                const textarea = document.createElement('textarea');
-                textarea.value = srtText.textContent;
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    copyButton.textContent = '복사 완료!';
-                    setTimeout(() => { copyButton.textContent = '본문 복사'; }, 2000);
-                } catch (err) { alert('자막 복사에 실패했습니다.'); }
-                document.body.removeChild(textarea);
-            }
-        }
-        window.onclick = (event) => { if (event.target == modal) closeModal(); }
-        document.addEventListener('keydown', (event) => { if (event.key === "Escape") closeModal(); });
-    </script>
+        srtText.classList.remove('hidden');
+      } catch {
+        loader.style.display = 'none';
+        srtText.textContent = '네트워크 오류';
+        srtText.classList.remove('hidden');
+      }
+    }
+    function closeModal() { modal.classList.add('hidden'); }
+    function copyCaption() {
+      navigator.clipboard.writeText(srtText.textContent);
+      copyBtn.textContent='복사 완료';
+      setTimeout(()=>copyBtn.textContent='복사',2000);
+    }
+    window.onclick = e => { if (e.target===modal) closeModal(); }
+    document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+  </script>
 </body>
 </html>

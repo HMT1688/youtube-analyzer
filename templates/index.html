@@ -1,31 +1,36 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유튜브 채널 분석기</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>유튜브 채널 분석기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-lg bg-white p-8 rounded-xl shadow-lg text-center">
-        <h1 class="text-3xl font-bold text-gray-800">유튜브 채널 분석기 🚀</h1>
-        <p class="text-gray-500 mt-2 mb-6">알고 싶은 채널의 URL을 입력하고 심층 분석을 시작하세요.</p>
-
-        <form action="/analyze" method="get">
-            <div class="mb-4">
-                <input type="text" name="url" placeholder="채널 URL을 여기에 붙여넣으세요..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" required>
-            </div>
-            <button type="submit" class="w-full bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-transform transform hover:scale-105">
-                분석 시작
-            </button>
-        </form>
-
-        {% if error %}
-            <div class="mt-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg text-left" role="alert">
-                <p class="font-bold">오류 발생!</p>
-                <p>{{ error }}</p>
-            </div>
-        {% endif %}
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+  <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg text-center">
+    <h1 class="text-3xl font-bold mb-4">유튜브 채널 분석기 🚀</h1>
+    <p class="text-gray-500 mb-6">채널 URL을 입력하고 분석을 시작하세요.</p>
+    <form action="/analyze" method="get">
+      <input
+        type="text"
+        name="url"
+        placeholder="채널 URL을 붙여넣으세요"
+        class="w-full p-3 border rounded mb-4 focus:ring-2 focus:ring-red-500 transition"
+        required
+      />
+      <button
+        type="submit"
+        class="w-full bg-red-600 text-white font-bold p-3 rounded hover:bg-red-700 transition-transform transform hover:scale-105"
+      >
+        분석 시작
+      </button>
+    </form>
+    {% if error %}
+    <div class="mt-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 text-left rounded">
+      <p class="font-bold">오류!</p>
+      <p>{{ error }}</p>
     </div>
+    {% endif %}
+  </div>
 </body>
 </html>

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>자막 보기: {{ title }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -13,10 +13,10 @@
       <button onclick="window.close()" class="bg-red-500 text-white px-3 py-1 rounded">닫기</button>
     </div>
     {% if error %}
-    <div class="text-red-600 bg-red-100 p-4 rounded">{{ error }}</div>
+    <div class="bg-red-100 text-red-600 p-4 rounded">{{ error }}</div>
     {% else %}
-    <div class="bg-white p-2 rounded shadow max-h-[70vh] overflow-y-auto">
-      <pre class="font-mono whitespace-pre-wrap">{{ srt_content }}</pre>
+    <div class="bg-white p-4 rounded shadow max-h-[70vh] overflow-y-auto">
+      <pre class="font-mono whitespace-pre-wrap break-words">{{ srt_content }}</pre>
     </div>
     {% endif %}
   </div>
