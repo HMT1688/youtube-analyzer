@@ -41,16 +41,12 @@ def parse_iso_date(iso_str):
     except ValueError:
         return datetime.fromisoformat(s.split(".")[0]).replace(tzinfo=timezone.utc)
 
-# ✨ 버그를 수정한 함수 ✨
 def parse_duration(duration_str):
-    """ISO 8601 기간 형식(PTxMxS)을 초 단위로 변환합니다. 비어있는 값에 대한 예외 처리를 추가합니다."""
-    if not duration_str: # 영상 길이 정보가 비어있으면 0을 반환
+    if not duration_str: 
         return 0
-        
     match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration_str)
-    if not match: # 형식이 맞지 않는 경우에도 0을 반환
+    if not match: 
         return 0
-        
     groups = match.groups()
     hours = int(groups[0]) if groups[0] else 0
     minutes = int(groups[1]) if groups[1] else 0
@@ -65,7 +61,6 @@ def format_seconds(seconds):
     if h > 0: return f"{h}시간 {m}분 {s}초"
     if m > 0: return f"{m}분 {s}초"
     return f"{s}초"
-
 
 def extract_channel_id_from_url(url):
     try:
@@ -93,29 +88,17 @@ def fetch_all_videos(channel_id, max_videos=200):
 
         all_video_ids = []
         next_page_token = None
-
         while len(all_video_ids) < max_videos:
-            playlist_request = youtube.playlistItems().list(
-                part="snippet",
-                playlistId=uploads_playlist_id,
-                maxResults=50,
-                pageToken=next_page_token
-            )
+            playlist_request = youtube.playlistItems().list(part="snippet", playlistId=uploads_playlist_id, maxResults=50, pageToken=next_page_token)
             playlist_response = playlist_request.execute()
-            
             all_video_ids.extend([item["snippet"]["resourceId"]["videoId"] for item in playlist_response.get("items", [])])
-            
             next_page_token = playlist_response.get('nextPageToken')
-            if not next_page_token:
-                break
+            if not next_page_token: break
         
         all_videos = []
         for i in range(0, len(all_video_ids), 50):
             batch_ids = all_video_ids[i:i+50]
-            video_response = youtube.videos().list(
-                part="snippet,statistics,contentDetails", id=",".join(batch_ids)
-            ).execute()
-            
+            video_response = youtube.videos().list(part="snippet,statistics,contentDetails", id=",".join(batch_ids)).execute()
             for v in video_response.get("items", []):
                 sn, st, cd = v.get("snippet", {}), v.get("statistics", {}), v.get("contentDetails", {})
                 all_videos.append({
@@ -139,10 +122,8 @@ def home():
 @app.route('/analyze')
 def analyze():
     url = request.args.get('url', '').strip()
-    try:
-        page = int(request.args.get('page', 1))
-    except ValueError:
-        page = 1
+    try: page = int(request.args.get('page', 1))
+    except ValueError: page = 1
 
     if not url: return render_template('index.html', error="채널 URL을 입력해주세요.")
     
@@ -157,7 +138,6 @@ def analyze():
         info = info_res["items"][0]
         sn, st = info["snippet"], info["statistics"]
         created_at = parse_iso_date(sn["publishedAt"])
-        days_since_creation = max((datetime.now(timezone.utc) - created_at).days, 1)
         total_views = int(st.get("viewCount", 0))
         video_count = int(st.get("videoCount", 0))
         
@@ -177,16 +157,12 @@ def analyze():
             total_vid_views = sum(v.get('views', 0) for v in videos)
             total_likes = sum(v.get('likes', 0) for v in videos)
             total_comments = sum(v.get('comments', 0) for v in videos)
-
             analysis['avg_duration'] = format_seconds(total_duration / len(videos)) if len(videos) > 0 else "N/A"
-            
             time_diff = videos[0]['published'] - videos[-1]['published']
             weeks = max(time_diff.days / 7, 1)
             analysis['uploads_per_week'] = round(len(videos) / weeks, 1)
-
             analysis['likes_per_1000_views'] = round((total_likes / total_vid_views) * 1000, 1) if total_vid_views > 0 else 0
             analysis['comments_per_1000_views'] = round((total_comments / total_vid_views) * 1000, 1) if total_vid_views > 0 else 0
-            
             analysis['top_5_videos'] = sorted(videos, key=lambda x: x.get('views', 0), reverse=True)[:5]
 
         videos_per_page = 16
@@ -202,18 +178,69 @@ def analyze():
         traceback.print_exc()
         return render_template('index.html', error=f"채널 분석 중 오류가 발생했습니다: {e}")
 
-# --- 자막/영상 다운로드 라우트 (이전과 동일) ---
+# --- ✨ 복원된 자막/영상 다운로드 라우트 ✨ ---
 @app.route('/caption/<video_id>')
 def download_caption(video_id):
-    pass
+    try:
+        yt = YouTube(f"https://youtu.be/{video_id}")
+        caption = yt.captions.get_by_language_code('ko') or yt.captions.get_by_language_code('en') or yt.captions.get_by_language_code('a.en')
+        if not caption:
+            return "이 영상에는 다운로드할 수 있는 자막이 없습니다.", 404
+        buffer = io.BytesIO(caption.generate_srt_captions().encode('utf-8'))
+        return send_file(buffer, as_attachment=True, download_name=f"{video_id}.srt", mimetype="text/plain")
+    except Exception as e:
+        print(f"--- 자막 다운로드 오류 (ID: {video_id}) ---")
+        traceback.print_exc()
+        return f"자막 다운로드 중 오류가 발생했습니다: {e}", 500
 
 @app.route('/caption-ai/<video_id>')
 def caption_ai(video_id):
-    pass
+    if not WHISPER_MODEL:
+        return "AI 자막 기능이 현재 비활성화 상태입니다.", 503
+    try:
+        yt = YouTube(f"https://youtu.be/{video_id}")
+        stream = yt.streams.filter(only_audio=True, file_extension="mp4").first()
+        if not stream:
+            return "오디오 스트림을 찾을 수 없습니다.", 404
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            audio_path = stream.download(output_path=temp_dir)
+            segments, _ = WHISPER_MODEL.transcribe(audio_path, beam_size=5, language="ko")
+            srt_content = []
+            for i, seg in enumerate(segments):
+                start = f"{int(seg.start//3600):02}:{int(seg.start%3600//60):02}:{int(seg.start%60):02},{int(seg.start*1000%1000):03}"
+                end = f"{int(seg.end//3600):02}:{int(seg.end%3600//60):02}:{int(seg.end%60):02},{int(seg.end*1000%1000):03}"
+                srt_content.append(f"{i+1}\n{start} --> {end}\n{seg.text.strip()}\n")
+            buffer = io.BytesIO("\n".join(srt_content).encode('utf-8'))
+            return send_file(buffer, as_attachment=True, download_name=f"{video_id}_ai.srt", mimetype="text/plain")
+    except Exception as e:
+        print(f"--- AI 자막 생성 오류 (ID: {video_id}) ---")
+        traceback.print_exc()
+        return f"AI 자막 생성 중 오류가 발생했습니다: {e}", 500
 
 @app.route('/download-video/<video_id>')
 def download_video(video_id):
-    pass
+    try:
+        yt = YouTube(f"https://youtu.be/{video_id}")
+        stream = yt.streams.get_highest_resolution()
+        
+        safe_title = "".join([c for c in yt.title if c.isalnum() or c in (' ', '-')]).rstrip()
+        filename = f"{safe_title}.mp4"
+
+        buffer = io.BytesIO()
+        stream.stream_to_buffer(buffer)
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="video/mp4"
+        )
+    except Exception as e:
+        print(f"--- 영상 다운로드 오류 (ID: {video_id}) ---")
+        traceback.print_exc()
+        return f"영상 다운로드 중 오류가 발생했습니다: {e}", 500
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5001)
