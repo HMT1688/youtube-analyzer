@@ -38,7 +38,7 @@ except Exception as e:
     logger.error(f"Whisper 모델 로드 실패: {e}")
     WHISPER_MODEL = None
 
-# --- 유틸 함수들 ---
+# --- 유틸리티 함수들 ---
 def parse_iso_date(iso_str):
     s = iso_str.rstrip("Z")
     try:
@@ -156,15 +156,22 @@ def analyze():
 
     analysis = {}
     if videos:
-        total_dur, total_view, total_like, total_com = (sum(v[k] for v in videos) for k in ["duration_sec", "views", "likes", "comments"])
-        weeks = max((videos[0]["published"] - videos[-1]["published"]).days / 7, 1)
-        analysis = {
+        total_dur = sum(v.get("duration_sec", 0) for v in videos)
+        total_view = sum(v.get("views", 0) for v in videos)
+        total_like = sum(v.get("likes", 0) for v in videos)
+        total_com = sum(v.get("comments", 0) for v in videos)
+        if len(videos) > 1:
+             weeks = max((videos[0]["published"] - videos[-1]["published"]).days / 7, 1)
+             analysis['uploads_per_week'] = round(len(videos)/weeks, 1)
+        else:
+             analysis['uploads_per_week'] = len(videos)
+
+        analysis.update({
             "avg_duration": format_seconds(total_dur / len(videos)) if videos else "N/A",
-            "uploads_per_week": round(len(videos)/weeks, 1),
             "likes_per_1000_views": round(total_like/total_view*1000, 1) if total_view else 0,
             "comments_per_1000_views": round(total_com/total_view*1000, 1) if total_view else 0,
-            "top_5_videos": sorted(videos, key=lambda x: x["views"], reverse=True)[:5]
-        }
+            "top_5_videos": sorted(videos, key=lambda x: x.get("views", 0), reverse=True)[:5]
+        })
 
     return render_template('analyze.html', stats=stats, videos=page_videos,
                            analysis=analysis, original_url=url,
@@ -213,3 +220,4 @@ def download_video(video_id):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=DEBUG)
+
