@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -o errexit
 
-echo "FFmpeg 설치 시작..."
-apt-get update && apt-get install -y ffmpeg
-
-echo "의존성 설치 시작..."
+echo "파이썬 라이브러리 설치를 시작합니다..."
 pip install -r requirements.txt
 
-echo "빌드 완료."
+echo "빌드 스크립트 완료."
