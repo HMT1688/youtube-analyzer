@@ -35,24 +35,30 @@ app = Flask(__name__)
 # --- 헬퍼 함수들 ---
 
 def parse_iso_date(iso_str):
-    """ISO 8601 형식의 문자열을 datetime 객체로 변환합니다."""
     s = iso_str.rstrip("Z")
     try:
         return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
     except ValueError:
         return datetime.fromisoformat(s.split(".")[0]).replace(tzinfo=timezone.utc)
 
+# ✨ 버그를 수정한 함수 ✨
 def parse_duration(duration_str):
-    """ISO 8601 기간 형식(PTxMxS)을 초 단위로 변환합니다."""
-    match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration_str).groups()
-    hours = int(match[0]) if match[0] else 0
-    minutes = int(match[1]) if match[1] else 0
-    seconds = int(match[2]) if match[2] else 0
+    """ISO 8601 기간 형식(PTxMxS)을 초 단위로 변환합니다. 비어있는 값에 대한 예외 처리를 추가합니다."""
+    if not duration_str: # 영상 길이 정보가 비어있으면 0을 반환
+        return 0
+        
+    match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration_str)
+    if not match: # 형식이 맞지 않는 경우에도 0을 반환
+        return 0
+        
+    groups = match.groups()
+    hours = int(groups[0]) if groups[0] else 0
+    minutes = int(groups[1]) if groups[1] else 0
+    seconds = int(groups[2]) if groups[2] else 0
     return hours * 3600 + minutes * 60 + seconds
 
 def format_seconds(seconds):
-    """초를 'x분 y초' 또는 'x시간 y분 z초' 형식으로 변환합니다."""
-    if seconds is None: return "N/A"
+    if seconds is None or seconds == 0: return "N/A"
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
@@ -80,7 +86,6 @@ def extract_channel_id_from_url(url):
     return None
 
 def fetch_all_videos(channel_id, max_videos=200):
-    """채널의 최신 동영상 ID를 최대 200개까지 가져옵니다."""
     try:
         youtube = build(YT_SERVICE, YT_VERSION, developerKey=API_KEY)
         channel_response = youtube.channels().list(part="contentDetails", id=channel_id).execute()
@@ -104,7 +109,6 @@ def fetch_all_videos(channel_id, max_videos=200):
             if not next_page_token:
                 break
         
-        # 비디오 상세 정보 가져오기 (50개씩 묶어서)
         all_videos = []
         for i in range(0, len(all_video_ids), 50):
             batch_ids = all_video_ids[i:i+50]
@@ -167,15 +171,14 @@ def analyze():
         videos = fetch_all_videos(channel_id)
         if videos is None: return render_template('index.html', error="채널의 동영상 목록을 가져오는 데 실패했습니다.")
 
-        # 심층 분석 데이터 계산
         analysis = {}
         if videos:
-            total_duration = sum(v['duration_sec'] for v in videos)
-            total_vid_views = sum(v['views'] for v in videos)
-            total_likes = sum(v['likes'] for v in videos)
-            total_comments = sum(v['comments'] for v in videos)
+            total_duration = sum(v.get('duration_sec', 0) for v in videos)
+            total_vid_views = sum(v.get('views', 0) for v in videos)
+            total_likes = sum(v.get('likes', 0) for v in videos)
+            total_comments = sum(v.get('comments', 0) for v in videos)
 
-            analysis['avg_duration'] = format_seconds(total_duration / len(videos))
+            analysis['avg_duration'] = format_seconds(total_duration / len(videos)) if len(videos) > 0 else "N/A"
             
             time_diff = videos[0]['published'] - videos[-1]['published']
             weeks = max(time_diff.days / 7, 1)
@@ -184,9 +187,8 @@ def analyze():
             analysis['likes_per_1000_views'] = round((total_likes / total_vid_views) * 1000, 1) if total_vid_views > 0 else 0
             analysis['comments_per_1000_views'] = round((total_comments / total_vid_views) * 1000, 1) if total_vid_views > 0 else 0
             
-            analysis['top_5_videos'] = sorted(videos, key=lambda x: x['views'], reverse=True)[:5]
+            analysis['top_5_videos'] = sorted(videos, key=lambda x: x.get('views', 0), reverse=True)[:5]
 
-        # 페이지네이션
         videos_per_page = 16
         total_pages = math.ceil(len(videos) / videos_per_page)
         start_index = (page - 1) * videos_per_page
@@ -200,21 +202,17 @@ def analyze():
         traceback.print_exc()
         return render_template('index.html', error=f"채널 분석 중 오류가 발생했습니다: {e}")
 
-
 # --- 자막/영상 다운로드 라우트 (이전과 동일) ---
 @app.route('/caption/<video_id>')
 def download_caption(video_id):
-    # ... (이전 코드와 동일) ...
     pass
 
 @app.route('/caption-ai/<video_id>')
 def caption_ai(video_id):
-    # ... (이전 코드와 동일) ...
     pass
 
 @app.route('/download-video/<video_id>')
 def download_video(video_id):
-    # ... (이전 코드와 동일) ...
     pass
 
 if __name__ == "__main__":
