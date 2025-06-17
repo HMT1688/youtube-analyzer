@@ -1,36 +1,19 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>유튜브 채널 분석기</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-  <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg text-center">
-    <h1 class="text-3xl font-bold mb-4">유튜브 채널 분석기 🚀</h1>
-    <p class="text-gray-500 mb-6">채널 URL을 입력하고 분석을 시작하세요.</p>
+  <div class="w-full max-w-md bg-white p-8 rounded-lg shadow text-center">
+    <h1 class="text-2xl font-bold mb-4">유튜브 채널 분석기 🚀</h1>
     <form action="/analyze" method="get">
-      <input
-        type="text"
-        name="url"
-        placeholder="채널 URL을 붙여넣으세요"
-        class="w-full p-3 border rounded mb-4 focus:ring-2 focus:ring-red-500 transition"
-        required
-      />
-      <button
-        type="submit"
-        class="w-full bg-red-600 text-white font-bold p-3 rounded hover:bg-red-700 transition-transform transform hover:scale-105"
-      >
-        분석 시작
-      </button>
+      <input type="text" name="url" placeholder="채널 URL 입력" class="w-full p-3 border rounded mb-4" required>
+      <button type="submit" class="w-full bg-red-600 text-white py-2 rounded">분석 시작</button>
     </form>
-    {% if error %}
-    <div class="mt-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 text-left rounded">
-      <p class="font-bold">오류!</p>
-      <p>{{ error }}</p>
-    </div>
-    {% endif %}
+    {% if error %}<p class="mt-4 text-red-500">{{ error }}</p>{% endif %}
   </div>
 </body>
 </html>
