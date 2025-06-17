@@ -123,6 +123,7 @@ def home():
 @app.route('/analyze')
 def analyze():
     url = request.args.get('url', '').strip()
+    sort_by = request.args.get('sortBy', 'published') 
     try: page = max(int(request.args.get('page', 1)), 1)
     except ValueError: page = 1
 
@@ -133,9 +134,15 @@ def analyze():
 
     try:
         info = get_youtube_client().channels().list(part="snippet,statistics", id=cid).execute()["items"][0]
+    except HttpError as e:
+        if e.resp.status == 429:
+             return render_template('index.html', error="API 사용량을 초과했습니다. 내일 다시 시도해주세요.")
+        logger.exception("채널 정보 로딩 실패")
+        return render_template('index.html', error=f"채널 정보 로딩 중 오류: {e}")
     except Exception as e:
         logger.exception("채널 정보 로딩 실패")
         return render_template('index.html', error=f"채널 정보 로딩 중 오류: {e}")
+
 
     stats = {
         "title": info["snippet"].get("title", ""), "description": info["snippet"].get("description", ""),
@@ -149,6 +156,9 @@ def analyze():
     videos = fetch_all_videos(cid)
     if videos is None: return render_template('index.html', error="동영상 목록을 가져올 수 없습니다.")
 
+    # 정렬
+    videos.sort(key=lambda x: x.get(sort_by, x['published']), reverse=True)
+
     per_page = 16
     total_pages = math.ceil(len(videos) / per_page)
     if page > total_pages and total_pages > 0: page = total_pages
@@ -156,12 +166,11 @@ def analyze():
 
     analysis = {}
     if videos:
-        total_dur = sum(v.get("duration_sec", 0) for v in videos)
-        total_view = sum(v.get("views", 0) for v in videos)
-        total_like = sum(v.get("likes", 0) for v in videos)
-        total_com = sum(v.get("comments", 0) for v in videos)
+        total_dur, total_view, total_like, total_com = (sum(v.get(k, 0) for v in videos) for k in ["duration_sec", "views", "likes", "comments"])
         if len(videos) > 1:
-             weeks = max((videos[0]["published"] - videos[-1]["published"]).days / 7, 1)
+             first_video_date = videos[0]['published']
+             last_video_date = videos[-1]['published']
+             weeks = max((first_video_date - last_video_date).days / 7, 1)
              analysis['uploads_per_week'] = round(len(videos)/weeks, 1)
         else:
              analysis['uploads_per_week'] = len(videos)
@@ -174,7 +183,7 @@ def analyze():
         })
 
     return render_template('analyze.html', stats=stats, videos=page_videos,
-                           analysis=analysis, original_url=url,
+                           analysis=analysis, original_url=url, sort_by=sort_by,
                            total_pages=total_pages, current_page=page, CPM_USD=CPM_USD)
 
 @app.route('/get-caption/<video_id>')
@@ -220,4 +229,3 @@ def download_video(video_id):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=DEBUG)
-
